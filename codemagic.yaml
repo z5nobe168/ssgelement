@@ -4,7 +4,7 @@ workflows:
     environment:
       vars:
         XCODE_PROJECT: "Riot.xcodeproj"
-        XCODE_SCHEME: "Element"   # ← 這個必須和你的 target/scheme 名稱一致
+        XCODE_SCHEME: "Element"
       xcode: latest
       cocoapods: default
     scripts:
