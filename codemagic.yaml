@@ -3,8 +3,8 @@ workflows:
     name: Build Element iOS 1.11.25
     environment:
       vars:
-        XCODE_WORKSPACE: "Riot.xcworkspace"
-        XCODE_SCHEME: "Riot"
+        XCODE_PROJECT: "Riot.xcodeproj"
+        XCODE_SCHEME: "Element"   # ← 這個必須和你的 target/scheme 名稱一致
       xcode: latest
       cocoapods: default
     scripts:
@@ -14,10 +14,13 @@ workflows:
           pod install
       - name: Build .ipa
         script: |
-          xcodebuild -workspace $XCODE_WORKSPACE -scheme $XCODE_SCHEME -configuration Release -archivePath $CM_BUILD_DIR/$XCODE_SCHEME.xcarchive archive
-          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/$XCODE_SCHEME.xcarchive -exportPath $CM_BUILD_DIR -exportOptionsPlist ExportOptions.plist
+          xcodebuild -project $XCODE_PROJECT \
+                     -scheme $XCODE_SCHEME \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -derivedDataPath build \
+                     clean build
     artifacts:
-      - $CM_BUILD_DIR/*.ipa
-      - $CM_BUILD_DIR/*.dSYM.zip
-      - $CM_BUILD_DIR/export_logs/*.log
-      - $CM_BUILD_DIR/xcarchive.zip
+      - build/Build/Products/Release-iphoneos/*.app
+      - build/**/*.dSYM
+      - build/**/*.ipa
