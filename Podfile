@@ -1,7 +1,7 @@
-platform :ios, '13.0'
-project 'Element.xcodeproj'
+platform :ios, '12.0'
 use_frameworks!
 
 target 'Element' do
-  # 你有用到 pod 就寫在這裡，沒用可以留空
+  pod 'MatrixSDK', '~> 0.18.0'
+  pod 'SwiftLint'
 end
