@@ -1,7 +1,8 @@
-platform :ios, '12.0'
+platform :ios, '13.0'
 use_frameworks!
 
 target 'Element' do
-  pod 'MatrixSDK', '~> 0.18.0'
-  pod 'SwiftLint'
+  pod 'Alamofire', '~> 5.2'
 end
+
+project 'Element.xcodeproj'
