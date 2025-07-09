@@ -1,0 +1,20 @@
+workflows:
+  ios-workflow:
+    name: iOS Workflow
+    max_build_duration: 60
+    environment:
+      vars:
+        XCODE_WORKSPACE: "Element.xcworkspace"
+        XCODE_SCHEME: "Element"
+      xcode: latest
+    scripts:
+      - name: Install CocoaPods
+        script: |
+          gem install cocoapods
+          pod install
+      - name: Build ipa
+        script: |
+          xcodebuild -workspace $XCODE_WORKSPACE -scheme $XCODE_SCHEME -configuration Release -archivePath $CM_BUILD_DIR/$XCODE_SCHEME.xcarchive archive
+          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/$XCODE_SCHEME.xcarchive -exportPath $CM_BUILD_DIR -exportOptionsPlist ExportOptions.plist
+    artifacts:
+      - $CM_BUILD_DIR/*.ipa
