@@ -1,37 +1,44 @@
 workflows:
-  element-ios-workflow:
+  element-ios:
     name: Element iOS Build
-    instance_type: mac_mini_m1  # M1 芯片加速构建
     environment:
       groups:
-        - ios_signing  # 包含加密的证书/配置文件
-    triggering:
-      events:
-        - push
+        - ios_signing_credentials  # 包含证书和配置的环境变量组
+      vars:
+        FLUTTER_VERSION: "3.16.9"  # Element 1.11.25 兼容的 Flutter 版本
+        XCODE_VERSION: "15.0"       # 兼容的 Xcode 版本
+        BUNDLE_ID: "io.element.elementX"  # 你的实际 Bundle ID
+        BUILD_NUMBER: "1.11.25"     # 构建版本号
+
     scripts:
-      - name: Setup
+      - name: Setup Flutter
         script: |
-          # 安装依赖
-          brew install xcodegen
-          gem install cocoapods
-          
-          # 生成 Xcode 项目
-          xcodegen
-          pod install
-          
-      - name: Build
+          flutter config --no-analytics
+          flutter pub get
+
+      - name: iOS Build
         script: |
-          xcodebuild build-for-testing \
-            -workspace "Riot.xcworkspace" \
-            -scheme "Riot" \
-            -destination 'platform=iOS Simulator,name=iPhone 15'
-      
-      - name: Test (可选)
-        script: |
-          xcode-project run-tests \
-            --workspace "Riot.xcworkspace" \
-            --scheme "Riot" \
-            --device "iPhone 15"
-        test_report: build/ios/test/*.xml  # 集成测试报告
+          # 设置 iOS 代码签名
+          keychain initialize
+          xcode-project use-profiles
+
+          # 增加构建版本号 (可选)
+          agvtool new-version -all $BUILD_NUMBER
+
+          # 执行 Flutter 构建
+          flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
+            --dart-define=FLAVOR=element \
+            --export-options-plist=ios/ExportOptions.plist
+
     artifacts:
-      - build/**/*.app  # 输出产物
+      - build/ios/ipa/*.ipa        # 生成的 IPA 文件路径
+
+    publishing:
+      email:
+        recipients:
+          - your-team@example.com   # 通知邮箱
+      app_store_connect:             # 自动上传到 App Store Connect
+        api_key: $APP_STORE_CONNECT_API_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
