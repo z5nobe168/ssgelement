@@ -3,42 +3,58 @@ workflows:
     name: Element iOS Build
     environment:
       groups:
-        - ios_signing_credentials  # 包含证书和配置的环境变量组
+        - ios_signing_credentials
       vars:
-        FLUTTER_VERSION: "3.16.9"  # Element 1.11.25 兼容的 Flutter 版本
-        XCODE_VERSION: "15.0"       # 兼容的 Xcode 版本
-        BUNDLE_ID: "io.element.elementX"  # 你的实际 Bundle ID
-        BUILD_NUMBER: "1.11.25"     # 构建版本号
+        FLUTTER_VERSION: "3.16.9"
+        XCODE_VERSION: "15.0"
+        BUNDLE_ID: "io.element.elementX"
+        BUILD_NUMBER: "1.11.25"
 
     scripts:
+      - name: Verify project structure
+        script: |
+          echo "当前工作目录: $(pwd)"
+          echo "目录内容:"
+          ls -la
+          if [ ! -f "pubspec.yaml" ]; then
+            echo "错误：在根目录找不到 pubspec.yaml"
+            find . -name pubspec.yaml -exec dirname {} \;
+            exit 1
+          fi
+
       - name: Setup Flutter
         script: |
+          FLUTTER_PATH="${FLUTTER_ROOT:-$HOME/programs/flutter}"
+          echo "Flutter 路径: $FLUTTER_PATH"
+          
           flutter config --no-analytics
+          flutter doctor -v
+          
+          if [ ! -f "pubspec.yaml" ]; then
+            echo "自动创建 Flutter 项目结构..."
+            flutter create . --org $BUNDLE_ID --platforms ios
+          fi
+          
+          flutter clean
           flutter pub get
 
       - name: iOS Build
         script: |
-          # 设置 iOS 代码签名
           keychain initialize
           xcode-project use-profiles
-
-          # 增加构建版本号 (可选)
+          
+          # 设置构建号
           agvtool new-version -all $BUILD_NUMBER
-
-          # 执行 Flutter 构建
+          
           flutter build ipa --release \
             --build-number=$BUILD_NUMBER \
             --dart-define=FLAVOR=element \
             --export-options-plist=ios/ExportOptions.plist
 
     artifacts:
-      - build/ios/ipa/*.ipa        # 生成的 IPA 文件路径
+      - build/ios/ipa/*.ipa
 
     publishing:
       email:
         recipients:
-          - your-team@example.com   # 通知邮箱
-      app_store_connect:             # 自动上传到 App Store Connect
-        api_key: $APP_STORE_CONNECT_API_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+          - your-team@example.com
