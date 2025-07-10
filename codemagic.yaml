@@ -1,43 +1,70 @@
 workflows:
-  element-ios:
-    name: Element iOS Build
+  element-ios-native:
+    name: Element iOS Native Build
     environment:
       groups:
-        - ios_signing_credentials  # 包含证书和配置的环境变量组
+        - ios_signing_credentials  # 包含签名证书的环境变量组
       vars:
-        FLUTTER_VERSION: "3.16.9"  # Element 1.11.25 兼容的 Flutter 版本
-        XCODE_VERSION: "15.0"       # 兼容的 Xcode 版本
-        BUNDLE_ID: "io.element.elementX"  # 你的实际 Bundle ID
+        XCODE_VERSION: "15.0"      # 使用的 Xcode 版本
+        BUNDLE_ID: "io.element.elementX"  # 应用的 Bundle ID
         BUILD_NUMBER: "1.11.25"     # 构建版本号
+        SCHEME_NAME: "Riot"         # Xcode 项目 scheme 名称
+        WORKSPACE_PATH: "Riot.xcworkspace"  # Xcode workspace 路径
+        EXPORT_OPTIONS_PLIST: "Riot/ExportOptions.plist"  # 导出配置
 
     scripts:
-      - name: Setup Flutter
+      # 1. 安装 CocoaPods 依赖
+      - name: Install Dependencies
         script: |
-          flutter config --no-analytics
-          flutter pub get
-
+          echo "安装 CocoaPods 依赖..."
+          gem install cocoapods -v 1.16.2
+          pod install --repo-update
+          echo "依赖安装完成"
+          
+      # 2. 设置构建号
+      - name: Set Build Number
+        script: |
+          echo "设置构建号: $BUILD_NUMBER"
+          cd Riot
+          agvtool new-version -all $BUILD_NUMBER
+          cd ..
+          echo "构建号设置完成"
+          
+      # 3. iOS 构建
       - name: iOS Build
         script: |
-          # 设置 iOS 代码签名
+          # 初始化钥匙串
           keychain initialize
+          
+          # 应用签名配置
           xcode-project use-profiles
-
-          # 增加构建版本号 (可选)
-          agvtool new-version -all $BUILD_NUMBER
-
-          # 执行 Flutter 构建
-          flutter build ipa --release \
-            --build-number=$BUILD_NUMBER \
-            --dart-define=FLAVOR=element \
-            --export-options-plist=ios/ExportOptions.plist
+          
+          # 创建构建目录
+          mkdir -p build
+          
+          echo "开始构建 IPA..."
+          # 归档项目
+          xcodebuild archive \
+            -workspace "$WORKSPACE_PATH" \
+            -scheme "$SCHEME_NAME" \
+            -configuration Release \
+            -archivePath build/Riot.xcarchive
+          
+          # 导出 IPA
+          xcodebuild -exportArchive \
+            -archivePath build/Riot.xcarchive \
+            -exportOptionsPlist "$EXPORT_OPTIONS_PLIST" \
+            -exportPath build/ios/ipa
+          
+          echo "IPA 构建完成"
 
     artifacts:
-      - build/ios/ipa/*.ipa        # 生成的 IPA 文件路径
+      - build/ios/ipa/*.ipa  # 生成的 IPA 文件
 
     publishing:
       email:
         recipients:
-          - your-team@example.com   # 通知邮箱
+          - your-email@example.com  # 通知邮箱
       app_store_connect:             # 自动上传到 App Store Connect
         api_key: $APP_STORE_CONNECT_API_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
