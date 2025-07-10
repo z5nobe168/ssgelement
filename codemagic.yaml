@@ -1,44 +1,57 @@
 workflows:
-  element-ios:
-    name: Element iOS Build
+  element-ios-native:
+    name: Element iOS Native Build
     environment:
       groups:
-        - ios_signing_credentials  # 包含证书和配置的环境变量组
+        - ios_signing_credentials
       vars:
-        FLUTTER_VERSION: "3.16.9"  # Element 1.11.25 兼容的 Flutter 版本
-        XCODE_VERSION: "15.0"       # 兼容的 Xcode 版本
-        BUNDLE_ID: "io.element.elementX"  # 你的实际 Bundle ID
-        BUILD_NUMBER: "1.11.25"     # 构建版本号
+        XCODE_VERSION: "15.0"
+        BUNDLE_ID: "io.element.elementX"
+        BUILD_NUMBER: "1.11.25"
 
     scripts:
-      - name: Setup Flutter
+      - name: Install Dependencies
         script: |
-          flutter config --no-analytics
-          flutter pub get
+          echo "安装 CocoaPods..."
+          gem install cocoapods -v 1.16.2
+          pod install --repo-update --project-directory=.
 
       - name: iOS Build
         script: |
-          # 设置 iOS 代码签名
+          # 初始化钥匙串
           keychain initialize
+          
+          # 应用签名配置
           xcode-project use-profiles
-
-          # 增加构建版本号 (可选)
+          
+          # 设置构建号
+          cd Riot
           agvtool new-version -all $BUILD_NUMBER
-
-          # 执行 Flutter 构建
-          flutter build ipa --release \
-            --build-number=$BUILD_NUMBER \
-            --dart-define=FLAVOR=element \
-            --export-options-plist=ios/ExportOptions.plist
+          cd ..
+          
+          # 构建 IPA
+          xcodebuild \
+            -workspace "Riot.xcworkspace" \
+            -scheme "Riot" \
+            -configuration Release \
+            -archivePath build/Riot.xcarchive \
+            archive
+          
+          # 导出 IPA
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/Riot.xcarchive \
+            -exportOptionsPlist "Riot/ExportOptions.plist" \
+            -exportPath build/ios/ipa
 
     artifacts:
-      - build/ios/ipa/*.ipa        # 生成的 IPA 文件路径
+      - build/ios/ipa/*.ipa
 
     publishing:
       email:
         recipients:
-          - your-team@example.com   # 通知邮箱
-      app_store_connect:             # 自动上传到 App Store Connect
+          - your-team@example.com
+      app_store_connect:
         api_key: $APP_STORE_CONNECT_API_KEY
         key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
         issuer_id: $APP_STORE_CONNECT_ISSUER_ID
