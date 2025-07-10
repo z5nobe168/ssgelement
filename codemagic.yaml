@@ -1,26 +1,37 @@
 workflows:
-  ios-build:
-    name: Build Element iOS 1.11.25
+  element-ios-workflow:
+    name: Element iOS Build
+    instance_type: mac_mini_m1  # M1 芯片加速构建
     environment:
-      vars:
-        XCODE_PROJECT: "Riot.xcodeproj"
-        XCODE_SCHEME: "Element"
-      xcode: latest
-      cocoapods: default
+      groups:
+        - ios_signing  # 包含加密的证书/配置文件
+    triggering:
+      events:
+        - push
     scripts:
-      - name: 安裝 CocoaPods 依賴
+      - name: Setup
         script: |
+          # 安装依赖
+          brew install xcodegen
           gem install cocoapods
+          
+          # 生成 Xcode 项目
+          xcodegen
           pod install
-      - name: Build .ipa
+          
+      - name: Build
         script: |
-          xcodebuild -project $XCODE_PROJECT \
-                     -scheme $XCODE_SCHEME \
-                     -sdk iphoneos \
-                     -configuration Release \
-                     -derivedDataPath build \
-                     clean build
+          xcodebuild build-for-testing \
+            -workspace "Riot.xcworkspace" \
+            -scheme "Riot" \
+            -destination 'platform=iOS Simulator,name=iPhone 15'
+      
+      - name: Test (可选)
+        script: |
+          xcode-project run-tests \
+            --workspace "Riot.xcworkspace" \
+            --scheme "Riot" \
+            --device "iPhone 15"
+        test_report: build/ios/test/*.xml  # 集成测试报告
     artifacts:
-      - build/Build/Products/Release-iphoneos/*.app
-      - build/**/*.dSYM
-      - build/**/*.ipa
+      - build/**/*.app  # 输出产物
