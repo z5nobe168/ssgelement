@@ -1,44 +1,21 @@
 workflows:
-  element-ios:
-    name: Element iOS Build
+  unsigned-build:
+    name: Build unsigned mygodelement app
     environment:
-      groups:
-        - ios_signing_credentials  # 包含证书和配置的环境变量组
-      vars:
-        FLUTTER_VERSION: "3.16.9"  # Element 1.11.25 兼容的 Flutter 版本
-        XCODE_VERSION: "15.0"       # 兼容的 Xcode 版本
-        BUNDLE_ID: "io.element.elementX"  # 你的实际 Bundle ID
-        BUILD_NUMBER: "1.11.25"     # 构建版本号
-
+      xcode:
+        project_path: "mygodelement.xcworkspace"
+        scheme: "mygodelement"
+        sdk: "iphoneos"
     scripts:
-      - name: Setup Flutter
+      - name: Install CocoaPods
         script: |
-          flutter config --no-analytics
-          flutter pub get
-
-      - name: iOS Build
+          gem install cocoapods
+          pod install
+      - name: Clean build
         script: |
-          # 设置 iOS 代码签名
-          keychain initialize
-          xcode-project use-profiles
-
-          # 增加构建版本号 (可选)
-          agvtool new-version -all $BUILD_NUMBER
-
-          # 执行 Flutter 构建
-          flutter build ipa --release \
-            --build-number=$BUILD_NUMBER \
-            --dart-define=FLAVOR=element \
-            --export-options-plist=ios/ExportOptions.plist
-
+          xcodebuild clean -workspace mygodelement.xcworkspace -scheme mygodelement -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+      - name: Build unsigned .app
+        script: |
+          xcodebuild build -workspace mygodelement.xcworkspace -scheme mygodelement -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
     artifacts:
-      - build/ios/ipa/*.ipa        # 生成的 IPA 文件路径
-
-    publishing:
-      email:
-        recipients:
-          - your-team@example.com   # 通知邮箱
-      app_store_connect:             # 自动上传到 App Store Connect
-        api_key: $APP_STORE_CONNECT_API_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+      - build/Release-iphoneos/mygodelement.app
