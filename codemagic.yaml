@@ -1,6 +1,6 @@
 workflows:
   unsigned-build:
-    name: Build unsigned mygodelement app
+    name: Unsigned Build for mygodelement
     environment:
       xcode:
         project_path: "mygodelement.xcworkspace"
@@ -11,11 +11,9 @@ workflows:
         script: |
           gem install cocoapods
           pod install
-      - name: Clean build
+      - name: Build unsigned .app (no code signing)
         script: |
           xcodebuild clean -workspace mygodelement.xcworkspace -scheme mygodelement -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-      - name: Build unsigned .app
-        script: |
           xcodebuild build -workspace mygodelement.xcworkspace -scheme mygodelement -configuration Release -sdk iphoneos CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
     artifacts:
       - build/Release-iphoneos/mygodelement.app
